@@ -1,25 +1,29 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import Login from './components/Login'
-import Dashboard from './components/Dashboard'
-import AttendanceHistory from './components/AttendanceHistory'
-import Profile from './components/Profile'
 import './App.css'
+
+// Components
+import Login from './components/Login'
+import AdminDashboard from './components/AdminDashboard'
+import WorkerDashboard from './components/WorkerDashboard'
+import { Toaster } from './components/ui/sonner'
+
+const API_BASE_URL = 'https://j6h5i7c1l0kj.manus.space/api'
 
 function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user is already logged in
     checkAuthStatus()
   }, [])
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch('https://w5hni7copj5e.manus.space/api/profile', {
+      const response = await fetch(`${API_BASE_URL}/profile`, {
         credentials: 'include'
       })
+      
       if (response.ok) {
         const userData = await response.json()
         setUser(userData)
@@ -37,20 +41,25 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch('https://w5hni7copj5e.manus.space/api/logout', {
+      await fetch(`${API_BASE_URL}/logout`, {
         method: 'POST',
         credentials: 'include'
       })
-      setUser(null)
     } catch (error) {
       console.error('Logout failed:', error)
+    } finally {
+      setUser(null)
     }
   }
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold gradient-text mb-2">Workshop Manager</h2>
+          <p className="text-muted-foreground">Loading your workspace...</p>
+        </div>
       </div>
     )
   }
@@ -62,35 +71,62 @@ function App() {
           <Route 
             path="/login" 
             element={
-              user ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />
+              user ? (
+                <Navigate to={user.role === 'admin' ? '/admin' : '/worker'} replace />
+              ) : (
+                <Login onLogin={handleLogin} />
+              )
             } 
           />
+          
           <Route 
-            path="/dashboard" 
+            path="/admin/*" 
             element={
-              user ? <Dashboard user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
+              user && user.role === 'admin' ? (
+                <AdminDashboard user={user} onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
             } 
           />
+          
           <Route 
-            path="/history" 
+            path="/worker/*" 
             element={
-              user ? <AttendanceHistory user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
+              user && user.role === 'worker' ? (
+                <WorkerDashboard user={user} onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
             } 
           />
-          <Route 
-            path="/profile" 
-            element={
-              user ? <Profile user={user} onLogout={handleLogout} /> : <Navigate to="/login" />
-            } 
-          />
+          
           <Route 
             path="/" 
-            element={<Navigate to={user ? "/dashboard" : "/login"} />} 
+            element={
+              user ? (
+                <Navigate to={user.role === 'admin' ? '/admin' : '/worker'} replace />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            } 
           />
         </Routes>
+        
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: 'var(--card)',
+              color: 'var(--card-foreground)',
+              border: '1px solid var(--border)',
+            },
+          }}
+        />
       </div>
     </Router>
   )
 }
 
 export default App
+
